@@ -1,0 +1,9 @@
+export const APP_NAME = "VideoGen";
+export const DEFAULT_MODEL_ID = "veo3_fast";
+export const MAX_CONCURRENT_GENERATIONS = 3;
+export const POLL_INTERVAL_MS = 5000;
+export const POLL_TIMEOUT_MS = 600000; // 10 minutes
+export const MAX_PROMPT_LENGTH = 2500;
+export const MAX_SCENES = 6;
+export const DEFAULT_TRANSITION_TYPE = "crossfade" as const;
+export const DEFAULT_TRANSITION_DURATION_MS = 500;
