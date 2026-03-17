@@ -187,6 +187,7 @@ export function ProjectDetailClient({ project }: Props) {
           {finalVideoUrl && (
             <DistributePanel
               videoUrl={finalVideoUrl}
+              projectId={project.id}
               projectName={project.name}
               sceneDescriptions={store.scenes.map((s) => s.prompt)}
             />

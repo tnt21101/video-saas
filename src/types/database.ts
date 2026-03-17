@@ -101,3 +101,19 @@ export interface ApiCostLog {
   resolution: string | null;
   created_at: string;
 }
+
+export interface DistributionLog {
+  id: string;
+  project_id: string;
+  organization_id: string;
+  platform: "tiktok" | "instagram" | "youtube";
+  video_url: string;
+  caption: string | null;
+  hashtags: string[] | null;
+  title: string | null;
+  post_id: string | null;
+  post_url: string | null;
+  success: boolean;
+  error_message: string | null;
+  created_at: string;
+}

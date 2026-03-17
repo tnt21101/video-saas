@@ -56,9 +56,18 @@ export function StitchPanel({
         throw new Error(data.error || "Stitch request failed");
       }
 
-      const { requestId } = await res.json();
+      const data = await res.json();
+      const { requestId, videoUrl: syncVideoUrl, status: syncStatus } = data;
 
-      // Start polling
+      // Handle synchronous stitch completion
+      if (syncStatus === "complete" && syncVideoUrl) {
+        setIsStitching(false);
+        setStitchDone(true);
+        onStitchComplete(syncVideoUrl);
+        return;
+      }
+
+      // Start polling for async stitch
       pollRef.current = setInterval(async () => {
         try {
           const pollRes = await fetch(`/api/stitch/poll/${requestId}`);

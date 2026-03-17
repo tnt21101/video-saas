@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef } from "react";
 import { useGenerationStore } from "@/stores/generation-store";
-import { POLL_INTERVAL_MS } from "@/lib/constants";
+import { POLL_INTERVAL_MS, POLL_TIMEOUT_MS } from "@/lib/constants";
 
 export function useGeneration(projectId: string) {
   const store = useGenerationStore();
@@ -107,8 +107,19 @@ export function useGeneration(projectId: string) {
       if (pollIntervals.current.has(taskId)) return;
 
       store.addPollingTaskId(taskId);
+      const startTime = Date.now();
 
       const interval = setInterval(async () => {
+        // Auto-fail if polling exceeds timeout
+        if (Date.now() - startTime > POLL_TIMEOUT_MS) {
+          store.updateScene(sceneId, {
+            status: "failed",
+            error_message: "Generation timed out after 10 minutes",
+          });
+          stopPolling(taskId);
+          return;
+        }
+
         try {
           const res = await fetch(`/api/poll/${taskId}`);
           if (!res.ok) return;

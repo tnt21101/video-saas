@@ -1,11 +1,25 @@
 import { NextResponse } from "next/server";
 import { createServerClient } from "@supabase/ssr";
+import { createHmac, timingSafeEqual } from "crypto";
 
 // Webhook handler for Kie.ai callbacks — uses service role for direct DB access
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    console.log("[webhook/kie] Received:", JSON.stringify(body));
+    const rawBody = await request.text();
+
+    // Optional HMAC signature verification (enabled when KIE_WEBHOOK_SECRET is set)
+    const webhookSecret = process.env.KIE_WEBHOOK_SECRET;
+    if (webhookSecret) {
+      const signature = request.headers.get("x-kie-signature") ?? "";
+      const expected = createHmac("sha256", webhookSecret).update(rawBody).digest("hex");
+      if (!signature || !timingSafeEqual(Buffer.from(signature), Buffer.from(expected))) {
+        console.error("[webhook/kie] Invalid signature");
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+    }
+
+    const body = JSON.parse(rawBody);
+    console.log("[webhook/kie] Received:", { taskId: body.taskId || body.data?.taskId, status: body.status || body.data?.status });
 
     const taskId = body.taskId || body.data?.taskId || body.task_id;
     const status = body.status || body.data?.status;

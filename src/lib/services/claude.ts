@@ -1,9 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { ImageAnalysis, SceneBreakdown } from "@/types/api";
 
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY,
-});
+function getClient() {
+  return new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+  });
+}
 
 /** Strip markdown code fences from Claude's response */
 function extractJson(text: string): string {
@@ -11,21 +13,22 @@ function extractJson(text: string): string {
   return match ? match[1].trim() : text.trim();
 }
 
-const IMAGE_ANALYSIS_PROMPT = `You are analyzing an image for AI video generation. Determine if this is primarily a PRODUCT image or a CHARACTER/PERSON image, then extract detailed attributes.
+const IMAGE_ANALYSIS_PROMPT = `You are analyzing an image for AI video generation. Determine if this is primarily a PRODUCT image, a CHARACTER/PERSON image, or BOTH, then extract detailed attributes.
 
 Return a JSON object with this exact structure:
 {
-  "type": "product" or "character",
-  "product": { (only if type is product)
+  "type": "product" or "character" or "both",
+  "visual_description": "overall detailed visual description of the entire image for video prompt generation",
+  "product": { (include if type is "product" or "both")
     "brand_name": "detected or 'Unknown'",
     "product_name": "what the product is",
-    "color_scheme": "dominant colors",
+    "color_scheme": "dominant colors as a descriptive string",
     "font_style": "any text font style",
     "packaging": "packaging description",
-    "text": "any visible text",
+    "text_on_packaging": "any visible text on the product or packaging",
     "visual_description": "detailed visual description for video prompt"
   },
-  "character": { (only if type is character)
+  "character": { (include if type is "character" or "both")
     "age_range": "estimated age range",
     "gender_presentation": "perceived gender presentation",
     "build": "body type",
@@ -47,7 +50,7 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysis> {
   const contentType = imgRes.headers.get("content-type") || "image/jpeg";
   const mediaType = contentType.split(";")[0] as "image/jpeg" | "image/png" | "image/gif" | "image/webp";
 
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 1024,
     messages: [
@@ -66,7 +69,11 @@ export async function analyzeImage(imageUrl: string): Promise<ImageAnalysis> {
 
   const raw =
     response.content[0].type === "text" ? response.content[0].text : "";
-  return JSON.parse(extractJson(raw)) as ImageAnalysis;
+  try {
+    return JSON.parse(extractJson(raw)) as ImageAnalysis;
+  } catch {
+    throw new Error(`Image analysis returned invalid JSON: ${raw.slice(0, 300)}`);
+  }
 }
 
 const SCENE_BREAKDOWN_PROMPT = `You are creating a multi-scene video storyboard from a single image analysis.
@@ -105,7 +112,7 @@ export async function generateSceneBreakdown(
     JSON.stringify(analysis, null, 2)
   );
 
-  const response = await anthropic.messages.create({
+  const response = await getClient().messages.create({
     model: "claude-sonnet-4-5-20250929",
     max_tokens: 2048,
     messages: [{ role: "user", content: prompt }],
@@ -113,5 +120,9 @@ export async function generateSceneBreakdown(
 
   const raw =
     response.content[0].type === "text" ? response.content[0].text : "";
-  return JSON.parse(extractJson(raw)) as SceneBreakdown[];
+  try {
+    return JSON.parse(extractJson(raw)) as SceneBreakdown[];
+  } catch {
+    throw new Error(`Scene breakdown returned invalid JSON: ${raw.slice(0, 300)}`);
+  }
 }

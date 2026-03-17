@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import Link from "next/link";
 import { requireUser, getProjects } from "@/lib/dal";
 import { Button } from "@/components/ui/button";

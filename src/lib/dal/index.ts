@@ -5,6 +5,7 @@ import type {
   VideoProject,
   VideoScene,
   VideoModel,
+  DistributionLog,
 } from "@/types/database";
 
 // ── Default dev user (no login required) ──────────────────────
@@ -265,17 +266,27 @@ export async function deductCredits(
 ) {
   const supabase = await createClient();
 
+  // Read current balance
   const org = await getOrganization(orgId);
   if (org.credits_balance < amount) {
     throw new Error("Insufficient credits");
   }
 
-  const newBalance = org.credits_balance - amount;
+  const expectedBalance = org.credits_balance;
+  const newBalance = expectedBalance - amount;
 
-  await supabase
+  // Optimistic lock: only update if balance hasn't changed since we read it
+  const { data, error } = await supabase
     .from("organizations")
     .update({ credits_balance: newBalance })
-    .eq("id", orgId);
+    .eq("id", orgId)
+    .eq("credits_balance", expectedBalance)
+    .select("credits_balance")
+    .single();
+
+  if (error || !data) {
+    throw new Error("Credit deduction failed — balance changed concurrently. Please retry.");
+  }
 
   await supabase.from("credit_transactions").insert({
     organization_id: orgId,
@@ -288,4 +299,41 @@ export async function deductCredits(
   });
 
   return newBalance;
+}
+
+// ── Distribution Log ─────────────────────────────────────────
+
+export async function createDistributionLog(
+  entries: {
+    project_id: string;
+    organization_id: string;
+    platform: "tiktok" | "instagram" | "youtube";
+    video_url: string;
+    caption?: string;
+    hashtags?: string[];
+    title?: string;
+    post_id?: string;
+    post_url?: string;
+    success: boolean;
+    error_message?: string;
+  }[]
+) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("distribution_log")
+    .insert(entries)
+    .select();
+  if (error) throw error;
+  return data as DistributionLog[];
+}
+
+export async function getDistributionLog(projectId: string) {
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from("distribution_log")
+    .select("*")
+    .eq("project_id", projectId)
+    .order("created_at", { ascending: false });
+  if (error) throw error;
+  return data as DistributionLog[];
 }

@@ -1,39 +1,41 @@
 import { NextResponse } from "next/server";
-import { requireUser } from "@/lib/dal";
+import { requireUser, createScene } from "@/lib/dal";
 import { analyzeImage, generateSceneBreakdown } from "@/lib/services/claude";
-import { createScene } from "@/lib/dal";
 import { DEFAULT_MODEL_ID } from "@/lib/constants";
+import { scenesGenerateRequestSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
     const user = await requireUser();
-    const { imageUrl, projectId, sceneCount, model } = await request.json();
+    const parsed = scenesGenerateRequestSchema.safeParse(await request.json());
 
-    if (!imageUrl || !projectId) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Missing imageUrl or projectId" },
+        { error: "Invalid request", details: parsed.error.issues },
         { status: 400 }
       );
     }
+
+    const { imageUrl, projectId, sceneCount, model } = parsed.data;
 
     // Step 1: Analyze image with Claude
     const analysis = await analyzeImage(imageUrl);
 
     // Step 2: Generate scene breakdown
-    const scenes = await generateSceneBreakdown(analysis, sceneCount || 3);
+    const scenes = await generateSceneBreakdown(analysis, sceneCount);
 
-    // Step 3: Create scene records
-    const createdScenes = await Promise.all(
-      scenes.map((scene) =>
-        createScene(projectId, user.organization_id, {
-          scene_order: scene.scene_number,
-          source_image_url: imageUrl,
-          prompt: scene.video_prompt,
-          model: model || DEFAULT_MODEL_ID,
-          model_params: {},
-        })
-      )
-    );
+    // Step 3: Create scene records sequentially to avoid partial failures
+    const createdScenes = [];
+    for (const scene of scenes) {
+      const created = await createScene(projectId, user.organization_id, {
+        scene_order: scene.scene_number,
+        source_image_url: imageUrl,
+        prompt: scene.video_prompt,
+        model: model || DEFAULT_MODEL_ID,
+        model_params: {},
+      });
+      createdScenes.push(created);
+    }
 
     return NextResponse.json({
       analysis,

@@ -111,5 +111,12 @@ Return JSON only:
   });
 
   const text = response.content[0].type === "text" ? response.content[0].text : "";
-  return JSON.parse(text);
+  // Strip markdown fences if present
+  const jsonMatch = text.match(/```(?:json)?\s*([\s\S]*?)```/);
+  const cleaned = jsonMatch ? jsonMatch[1].trim() : text.trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch {
+    throw new Error(`Caption generation returned invalid JSON: ${text.slice(0, 300)}`);
+  }
 }

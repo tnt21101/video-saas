@@ -1,22 +1,25 @@
 import { NextResponse } from "next/server";
 import { requireUser } from "@/lib/dal";
 import { generateCaptions, type Platform } from "@/lib/services/distribute";
+import { captionsRequestSchema } from "@/lib/validation";
 
 export async function POST(request: Request) {
   try {
     await requireUser();
-    const { projectName, sceneDescriptions, platform } = await request.json();
+    const parsed = captionsRequestSchema.safeParse(await request.json());
 
-    if (!projectName || !platform) {
+    if (!parsed.success) {
       return NextResponse.json(
-        { error: "Missing projectName or platform" },
+        { error: "Invalid request", details: parsed.error.issues },
         { status: 400 }
       );
     }
 
+    const { projectName, sceneDescriptions, platform } = parsed.data;
+
     const result = await generateCaptions(
       projectName,
-      sceneDescriptions || [],
+      sceneDescriptions,
       platform as Platform
     );
 

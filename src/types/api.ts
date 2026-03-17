@@ -3,7 +3,7 @@
 export interface ImageAnalysisProduct {
   brand_name: string;
   product_name: string;
-  color_scheme: Array<{ hex: string; name: string }>;
+  color_scheme: string;
   font_style: string;
   packaging: string;
   text_on_packaging: string;

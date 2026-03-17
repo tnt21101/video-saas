@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { getProject } from "@/lib/dal";
 import { ProjectDetailClient } from "@/components/projects/project-detail-client";
 

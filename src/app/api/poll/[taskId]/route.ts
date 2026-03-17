@@ -14,6 +14,15 @@ export async function GET(
       return NextResponse.json({ error: "Scene not found" }, { status: 404 });
     }
 
+    // If scene was already completed (e.g. by webhook), skip polling and return current state
+    if (scene.status === "complete" || scene.status === "failed") {
+      return NextResponse.json({
+        status: scene.status,
+        videoUrl: scene.clip_url,
+        error: scene.error_message,
+      });
+    }
+
     const result = await pollGeneration(scene.model, taskId);
 
     if (result.status === "complete" && result.videoUrl) {

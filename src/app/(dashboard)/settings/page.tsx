@@ -1,3 +1,5 @@
+export const dynamic = "force-dynamic";
+
 import { requireUser } from "@/lib/dal";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 

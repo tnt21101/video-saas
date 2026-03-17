@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { requireUser, getProject, updateProject, deleteProject } from "@/lib/dal";
+import { projectUpdateSchema } from "@/lib/validation";
 
 export async function GET(
   _request: Request,
@@ -23,8 +24,16 @@ export async function PATCH(
   try {
     await requireUser();
     const { projectId } = await params;
-    const body = await request.json();
-    const project = await updateProject(projectId, body);
+    const parsed = projectUpdateSchema.safeParse(await request.json());
+
+    if (!parsed.success) {
+      return NextResponse.json(
+        { error: "Invalid request", details: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    const project = await updateProject(projectId, parsed.data);
     return NextResponse.json(project);
   } catch (error) {
     console.error("[project PATCH] Error:", error);
