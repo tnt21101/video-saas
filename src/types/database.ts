@@ -23,7 +23,7 @@ export interface User {
 export interface VideoProject {
   id: string;
   organization_id: string;
-  user_id: string;
+  user_id: string | null;
   name: string;
   description: string | null;
   status: "draft" | "generating" | "stitching" | "complete" | "failed";

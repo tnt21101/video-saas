@@ -1,3 +1,13 @@
-export default function ProjectDetailPage() {
-  return <div>Project Detail — Agent 3 will implement</div>;
+import { getProject } from "@/lib/dal";
+import { ProjectDetailClient } from "@/components/projects/project-detail-client";
+
+export default async function ProjectDetailPage({
+  params,
+}: {
+  params: Promise<{ projectId: string }>;
+}) {
+  const { projectId } = await params;
+  const project = await getProject(projectId);
+
+  return <ProjectDetailClient project={project} />;
 }

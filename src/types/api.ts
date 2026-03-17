@@ -50,8 +50,8 @@ export interface GenerateResponse {
 
 export interface PollResponse {
   status: "pending" | "processing" | "complete" | "failed";
-  videoUrl: string | null;
-  error: string | null;
+  videoUrl?: string | null;
+  error?: string | null;
 }
 
 export interface KieCallbackPayload {
